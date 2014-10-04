@@ -2,7 +2,6 @@
 
 var db = require('./db.js');
 var sockjs = require('sockjs');
-var _ = require('underscore');
 
 var clients = [];
 
@@ -24,8 +23,6 @@ exports.broadcast = function (message) {
 exports.send_all_services = function (client) {
   //broadcast all the services in the db to the client
   db.createValueStream().on('data', function (service){
-    service = _.omit(service, 'rawTxtRecord');
-    console.log('service is served: ', service.fullname)
     client.write(JSON.stringify({
       type: 'service',
       action: 'up',

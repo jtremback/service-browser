@@ -1,29 +1,29 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+'use strict';
+
 var director = require('director');
 var Vue = require('vue');
 // var services = require('./services.js');
 var sockets = require('./sockets.js'); // Start a listenin'
 
+
 var services = {};
 
 sockets.on('serviceUp', function (key, value) {
-  services.$add(key, value);
-  console.log('serviceUp', JSON.stringify(services,null,2))
+  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
+  services.$add(key.replace(/\./g, ''), value);
+  console.log(JSON.stringify(services,null,2))
 });
 
 sockets.on('serviceDown', function (key, value) {
-  services.$delete(key, value);
-  console.log('serviceDown', key, value)
+  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
+  services.$delete(key.replace(/\./g, ''), value);
 });
 
 
 Vue.component('home', {
   template: '#home'
 });
-
-// setInterval(function () {
-//   console.log(services.obj)
-// }, 1000);
 
 Vue.component('service-list', {
   template: '#service-list',
@@ -53,6 +53,7 @@ var router = new director.Router({
 
 router.init();
 },{"./sockets.js":2,"director":5,"vue":26}],2:[function(require,module,exports){
+'use strict';
 
 var SockJS = require('sockjs-client');
 var sock = new SockJS(window.location.origin + '/websocket');
@@ -70,9 +71,9 @@ sock.onmessage = function(e) {
 
   if (data.type === 'service') {
     if (data.action === 'up') {
-      serviceUp(data.service);
+      module.exports.emit('serviceUp', data.service.fullname, data.service);
     } else if(data.action === 'down') {
-      serviceDown(data.service);
+      module.exports.emit('serviceDown', data.service.fullname, data.service);
     }
   }
 };

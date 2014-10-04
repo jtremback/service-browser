@@ -1,3 +1,4 @@
+'use strict';
 
 var SockJS = require('sockjs-client');
 var sock = new SockJS(window.location.origin + '/websocket');
@@ -15,9 +16,9 @@ sock.onmessage = function(e) {
 
   if (data.type === 'service') {
     if (data.action === 'up') {
-      serviceUp(data.service);
+      module.exports.emit('serviceUp', data.service.fullname, data.service);
     } else if(data.action === 'down') {
-      serviceDown(data.service);
+      module.exports.emit('serviceDown', data.service.fullname, data.service);
     }
   }
 };

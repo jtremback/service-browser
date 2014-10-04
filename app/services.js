@@ -5,6 +5,7 @@ var db = require('./db.js');
 var mdns = require('mdns2');
 var util = require('util');
 var sockets = require('./sockets.js');
+var _ = require('underscore');
 
 // TODO need to listen for all service types
 // dev note: try udisks-ssh instead of http
@@ -15,6 +16,8 @@ exports.browser.on('serviceUp', function (service) {
   if (service.txtRecord && service.txtRecord.scope && service.txtRecord.type && (service.txtRecord.scope == 'peoplesopen.net') && (service.txtRecord.type == 'service-browser')) {
     console.log('ignoring other service browser on ' + util.inspect(service.addresses));
   }
+
+  service = _.omit(service, 'rawTxtRecord');
 
   db.put(service.fullname, service, function (err) {
     if (err) { console.log(err); }
@@ -32,6 +35,8 @@ exports.browser.on('serviceDown', function (service) {
     if (service.txtRecord && service.txtRecord.scope && service.txtRecord.type && (service.txtRecord.scope == 'peoplesopen.net') && (service.txtRecord.type == 'service-browser')) {
       console.log('ignoring other service browser on ' + util.inspect(service.addresses));
     }
+
+    service = _.omit(service, 'rawTxtRecord');
 
     db.del(service.fullname, service, function (err) {
       if (err) { console.log(err); }

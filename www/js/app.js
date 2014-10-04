@@ -30,39 +30,39 @@ var _ = require('lodash');
 var config = require('./config');
 var Modernizr = require('modernizr');
 
-var cssify = require('cssify');
-cssify.byUrl('build/index.css');
-cssify.byUrl('build/imports.css');
+// var cssify = require('cssify');
+// cssify.byUrl('build/index.css');
+// cssify.byUrl('build/imports.css');
 
 config.thisUrl = window.location.protocol + '//' + window.location.host;
-config.templateConfig = config.templateConfig || {};
+// config.templateConfig = config.templateConfig || {};
 
-if (typeof config.columns === 'undefined') {
-  config.templateConfig.columnNum = 4;
-}
+// if (typeof config.columns === 'undefined') {
+//   config.templateConfig.columnNum = 4;
+// }
 
-config.templateConfig.columns = [];
-config.templateConfig.columnWidth = 12 / config.templateConfig.columnNum;
+// config.templateConfig.columns = [];
+// config.templateConfig.columnWidth = 12 / config.templateConfig.columnNum;
 
-for (var i=1; i<=config.templateConfig.columnNum; i++) {
-  config.templateConfig.columns.push({});
-}
+// for (var i=1; i<=config.templateConfig.columnNum; i++) {
+//   config.templateConfig.columns.push({});
+// }
 
-config.templates = {
-  serviceTemplate: require('../templates/service.html'),
-  columnsTemplate: require('../templates/columns.html'),
-};
+// config.templates = {
+//   serviceTemplate: require('../templates/service.html'),
+//   columnsTemplate: require('../templates/columns.html'),
+// };
 
 // Adding contains to String class
 // We may want to place this elsewhere or do this differently
-String.prototype.contains = function(it) {
-  return this.indexOf(it) != -1;
-};
+// String.prototype.contains = function(it) {
+//   return this.indexOf(it) != -1;
+// };
 
-// Not strict about lowercase
-String.prototype.lContains = function(it) {
-  return this.toLowerCase().indexOf(it.toLowerCase()) != -1;
-};
+// // Not strict about lowercase
+// String.prototype.lContains = function(it) {
+//   return this.toLowerCase().indexOf(it.toLowerCase()) != -1;
+// };
 
 $(function() {
 
@@ -182,19 +182,19 @@ $(function() {
     },
 
     serviceUp: function(service) {
-      var containsService = _.find(sb.services, function(serviceIter) {
-        return serviceIter.unique === service.unique;
+      var containsService = _.find(sb.services, function(item) {
+        return item.unique === service.unique;
       });
       if (service.txtRecord.scope === 'peoplesopen.net' && !containsService) {
         service.host = service.host.replace(/\.$/, '');
 
-        service.link = false;
-        if(service.type.name === 'http') {
+        service.link = null;
+        if (service.type.name === 'http') {
           service.link = {
             url: 'http://'+service.addresses[0]+':'+service.port+'/',
             name: service.name
           };
-        } else if(service.type.name === 'https') {
+        } else if (service.type.name === 'https') {
           service.link = {
             url: 'https://'+service.addresses[0]+':'+service.port+'/',
             name: service.name
@@ -258,10 +258,10 @@ $(function() {
         console.log(e);
         var data = JSON.parse(e.data);
         console.log(data);
-        if(data.type === 'service') {
-          if(data.action === 'up') {
+        if (data.type === 'service') {
+          if (data.action === 'up') {
             sb.serviceUp(data.service);
-          } else if(data.action === 'down') {
+          } else if (data.action === 'down') {
             sb.serviceDown(data.service);
           }
         }

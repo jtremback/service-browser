@@ -24,11 +24,13 @@
 */
 'use strict';
 
+require('longjohn');
+
 var path = require('path');
 var http = require('http');
 var express = require('express');
-var sockets = require('./sockets.js');
-var services = require('./services.js');
+var sockets = require('./app/sockets.js');
+var services = require('./app/services.js');
 
 var config = require('./config.js');
 

@@ -20,7 +20,9 @@
     "sockjs": "^0.3.9",
     "tape": "^2.13.4",
     "vue": "^0.10.6",
-    "underscore": "^1.7.0"
+    "underscore": "^1.7.0",
+    "sockjs-client": "git://github.com/sockjs/sockjs-client",
+    "director": "^1.2.3"
   },
   "repository": {
     "type": "git",
@@ -42,18 +44,17 @@
     "email": "juul@sudomesh.org"
   },
   "license": "AGPL-3.0",
+  "browser": {
+    "sockjs-client": "./frontend/vendor/sockjs.0.3.4.js"
+  },
   "browserify": {
     "transform": [
-      "browserify-shim",
-      "hbsfy"
+      "browserify-shim"
     ]
   },
   "browserify-shim": {
     "sockjs-client": {
       "exports": "SockJS"
-    },
-    "modernizr": {
-      "exports": "Modernizr"
     }
   },
   "devDependencies": {

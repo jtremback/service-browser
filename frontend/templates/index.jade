@@ -1,0 +1,31 @@
+doctype html
+html(lang='en')
+  head
+    meta(charset='utf-8')
+    meta(http-equiv='X-UA-Compatible', content='IE=edge')
+    meta(name='viewport', content='width=device-width, initial-scale=1')
+    title Service Browser
+    link(href='build/style.css', rel='stylesheet')
+  body
+
+    #main
+      h1.text-center PeoplesOpen.net Service Browser
+      div(v-view="currentView", v-ref="view")
+
+    script#home(type="x-template")
+      service-list
+
+    script#service-list(type="x-template")
+      .container
+        .col-sm-4(v-repeat="services" v-component="service-box")
+
+    script#service-box(type="x-template")
+      .service-box.panel.panel-default
+        .panel-body
+          h1 {{ $key }}
+          h3 {{ name }}
+          p {{ txtRecord.description }}
+
+
+
+    script(src='build/bundle.js')

@@ -2,13 +2,16 @@
 
 var db = require('./db.js');
 var sockjs = require('sockjs');
+var _ = require('underscore');
+
 var clients = [];
 
 exports.socket = sockjs.createServer();
 
+
 // send message to all clients
 exports.broadcast = function (message) {
-  if (typeof message != 'string') {
+  if (typeof message !== 'string') {
     message = JSON.stringify(message);
   }
 
@@ -17,10 +20,12 @@ exports.broadcast = function (message) {
   });
 };
 
+
 exports.send_all_services = function (client) {
   //broadcast all the services in the db to the client
-  var serviceStream = db.createValueStream({ start: 'service!', end: 'service~' });
-  serviceStream.on('data', function (service){
+  db.createValueStream().on('data', function (service){
+    service = _.omit(service, 'rawTxtRecord');
+    console.log('service is served: ', service.fullname)
     client.write(JSON.stringify({
       type: 'service',
       action: 'up',
@@ -28,6 +33,7 @@ exports.send_all_services = function (client) {
     }));
   });
 };
+
 
 exports.socket.on('connection', function (conn) {
   clients.push(conn);
@@ -41,13 +47,5 @@ exports.socket.on('connection', function (conn) {
     }
 
     console.log('Client disconnected (' + clients.length + ' total)');
-  });
-
-  conn.on('service/downvote', function (data) {
-
-  });
-
-  conn.on('service/upvote', function (data) {
-
   });
 });

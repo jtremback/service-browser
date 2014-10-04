@@ -24,8 +24,6 @@
 */
 'use strict';
 
-require('longjohn');
-
 var path = require('path');
 var http = require('http');
 var express = require('express');
@@ -42,7 +40,7 @@ var server = http.createServer(app);
 sockets.socket.installHandlers(server, { prefix: '/websocket' });
 
 // serve static content from the /www dir at /static
-app.use('/static/', express.static(path.join(__dirname, 'www')));
+app.use('/static/', express.static(path.join(__dirname, 'frontend')));
 
 console.log('Listening on ' + config.hostname + ':' + config.port);
 server.listen(config.port, config.hostname);

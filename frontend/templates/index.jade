@@ -13,17 +13,21 @@ html(lang='en')
       div(v-view="currentView", v-ref="view")
 
     script#home(type="x-template")
-      service-list
+      service-columns
 
-    script#service-list(type="x-template")
+    //- script#service-list(type="x-template")
+    //-   .container
+    //-     .col-sm-4(v-repeat="services" v-component="service-box")
+
+    //- script#service-box(type="x-template")
+
+
+    script#service-columns(type="x-template")
       .container
-        .col-sm-4(v-repeat="services" v-component="service-box")
-
-    script#service-box(type="x-template")
-      .service-box.panel.panel-default
-        .panel-body
-          h3 {{ name }}
-          p {{ txtRecord.description }}
+        .row
+          .col-sm-4(v-repeat="column: columns")
+            div(v-repeat="column")
+              {{$index}}
 
 
 

@@ -5,7 +5,7 @@ var sock = new SockJS(window.location.origin + '/websocket');
 
 var EventEmitter = require('events').EventEmitter;
 
-
+module.exports = new EventEmitter();
 
 sock.onopen = function() {
   console.log('open');
@@ -28,7 +28,6 @@ sock.onclose = function() {
 };
 
 
-module.exports = new EventEmitter();
 
 function serviceUp (service) {
   if (service.txtRecord && service.txtRecord.scope === 'peoplesopen.net') {
@@ -53,3 +52,5 @@ function serviceUp (service) {
 function serviceDown (service) {
   module.exports.emit('serviceDown', service.fullname, service);
 }
+
+// [ [1, 4, 7], [2, 5, 8], [3, 6, 9] ]

@@ -3,39 +3,46 @@
 
 var director = require('director');
 var Vue = require('vue');
-// var services = require('./services.js');
+var columnize = require('./columnize.js');
 var sockets = require('./sockets.js'); // Start a listenin'
 
 
-var services = {};
+var services = [];
 
-sockets.on('serviceUp', function (key, value) {
-  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
-  services.$add(key.replace(/\./g, ''), value);
-  console.log(JSON.stringify(services,null,2))
-});
+// sockets.on('serviceUp', function (key, value) {
+//   // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
+//   services.$add(key.replace(/\./g, ''), value);
+//   console.log(JSON.stringify(services,null,2))
+// });
 
-sockets.on('serviceDown', function (key, value) {
-  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
-  services.$delete(key.replace(/\./g, ''), value);
-});
+// sockets.on('serviceDown', function (key, value) {
+//   // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
+//   services.$delete(key.replace(/\./g, ''), value);
+// });
 
 
 Vue.component('home', {
   template: '#home'
 });
 
-Vue.component('service-list', {
-  template: '#service-list',
+Vue.component('service-columns', {
+  template: '#service-columns',
   data: {
-    services: services
+    services: [1,2,3,4,5,6,7,8,9]
+  },
+  computed: {
+    columns: {
+      $get: function () {
+        return columnize(this.services, 3);
+      }
+    }
   }
 });
 
-Vue.component('service-box', {
-  template: '#service-box',
-  replace: false
-});
+// Vue.component('service-box', {
+//   template: '#service-box',
+//   replace: false
+// });
 
 
 var main = new Vue({
@@ -52,7 +59,39 @@ var router = new director.Router({
 });
 
 router.init();
-},{"./sockets.js":2,"director":5,"vue":26}],2:[function(require,module,exports){
+},{"./columnize.js":2,"./sockets.js":3,"director":6,"vue":27}],2:[function(require,module,exports){
+'use strict';
+
+// This takes an array and sorts it into an array of columns,
+// which can be arranged horizontally to create a nice packed
+// sorting effect when items have differing heights.
+//
+// columns: 3, source: [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
+//
+// turns to
+//
+// return [ [1, 4, 7], [2, 5, 8], [3, 6, 9] ]
+//
+// which is displayed as:
+//
+// 1 | 2 | 3
+// 4 | 5 | 6
+// 7 | 8 | 9
+
+module.exports = function (source, columns) {
+  var target = [];
+
+  for (var i = 0; i < columns; i++) {
+    target.push([]);
+  }
+
+  source.forEach(function (item, index) {
+    target[index % columns][Math.floor(Math.floor(index / columns))] = item;
+  });
+
+  return target;
+};
+},{}],3:[function(require,module,exports){
 'use strict';
 
 var SockJS = require('sockjs-client');
@@ -60,7 +99,7 @@ var sock = new SockJS(window.location.origin + '/websocket');
 
 var EventEmitter = require('events').EventEmitter;
 
-
+module.exports = new EventEmitter();
 
 sock.onopen = function() {
   console.log('open');
@@ -83,7 +122,6 @@ sock.onclose = function() {
 };
 
 
-module.exports = new EventEmitter();
 
 function serviceUp (service) {
   if (service.txtRecord && service.txtRecord.scope === 'peoplesopen.net') {
@@ -108,7 +146,9 @@ function serviceUp (service) {
 function serviceDown (service) {
   module.exports.emit('serviceDown', service.fullname, service);
 }
-},{"events":4,"sockjs-client":3}],3:[function(require,module,exports){
+
+// [ [1, 4, 7], [2, 5, 8], [3, 6, 9] ]
+},{"events":5,"sockjs-client":4}],4:[function(require,module,exports){
 (function (global){
 ;__browserify_shim_require__=require;(function browserifyShim(module, exports, require, define, browserify_shim__define__module__export__) {
 /* SockJS client, version 0.3.4, http://sockjs.org, MIT License
@@ -2495,7 +2535,7 @@ if (typeof define === 'function' && define.amd) {
 }).call(global, undefined, undefined, undefined, undefined, function defineExport(ex) { module.exports = ex; });
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2798,7 +2838,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 
 
 //
@@ -3518,7 +3558,7 @@ Router.prototype.mount = function(routes, path) {
 
 
 }(typeof exports === "object" ? exports : window));
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 var utils = require('./utils')
 
 function Batcher () {
@@ -3564,7 +3604,7 @@ BatcherProto.reset = function () {
 }
 
 module.exports = Batcher
-},{"./utils":31}],7:[function(require,module,exports){
+},{"./utils":32}],8:[function(require,module,exports){
 var Batcher        = require('./batcher'),
     bindingBatcher = new Batcher(),
     bindingId      = 1
@@ -3668,7 +3708,7 @@ BindingProto.unbind = function () {
 }
 
 module.exports = Binding
-},{"./batcher":6}],8:[function(require,module,exports){
+},{"./batcher":7}],9:[function(require,module,exports){
 var Emitter     = require('./emitter'),
     Observer    = require('./observer'),
     config      = require('./config'),
@@ -4706,7 +4746,7 @@ function getRoot (compiler) {
 }
 
 module.exports = Compiler
-},{"./binding":7,"./config":9,"./deps-parser":10,"./directive":11,"./emitter":22,"./exp-parser":23,"./observer":27,"./text-parser":29,"./utils":31,"./viewmodel":32}],9:[function(require,module,exports){
+},{"./binding":8,"./config":10,"./deps-parser":11,"./directive":12,"./emitter":23,"./exp-parser":24,"./observer":28,"./text-parser":30,"./utils":32,"./viewmodel":33}],10:[function(require,module,exports){
 var TextParser = require('./text-parser')
 
 module.exports = {
@@ -4726,7 +4766,7 @@ Object.defineProperty(module.exports, 'delimiters', {
         TextParser.setDelimiters(delimiters)
     }
 })
-},{"./text-parser":29}],10:[function(require,module,exports){
+},{"./text-parser":30}],11:[function(require,module,exports){
 var Emitter  = require('./emitter'),
     utils    = require('./utils'),
     Observer = require('./observer'),
@@ -4792,7 +4832,7 @@ module.exports = {
     }
     
 }
-},{"./emitter":22,"./observer":27,"./utils":31}],11:[function(require,module,exports){
+},{"./emitter":23,"./observer":28,"./utils":32}],12:[function(require,module,exports){
 var dirId           = 1,
     ARG_RE          = /^[\w\$-]+$/,
     FILTER_TOKEN_RE = /[^\s'"]+|'[^']+'|"[^"]+"/g,
@@ -5051,7 +5091,7 @@ function escapeQuote (v) {
 }
 
 module.exports = Directive
-},{"./text-parser":29}],12:[function(require,module,exports){
+},{"./text-parser":30}],13:[function(require,module,exports){
 var utils = require('../utils'),
     slice = [].slice
 
@@ -5093,7 +5133,7 @@ module.exports = {
         parent.insertBefore(frag, this.el)
     }
 }
-},{"../utils":31}],13:[function(require,module,exports){
+},{"../utils":32}],14:[function(require,module,exports){
 var utils    = require('../utils')
 
 /**
@@ -5150,7 +5190,7 @@ module.exports = {
         }
     }
 }
-},{"../utils":31}],14:[function(require,module,exports){
+},{"../utils":32}],15:[function(require,module,exports){
 var utils      = require('../utils'),
     config     = require('../config'),
     transition = require('../transition'),
@@ -5280,7 +5320,7 @@ directives.html    = require('./html')
 directives.style   = require('./style')
 directives.partial = require('./partial')
 directives.view    = require('./view')
-},{"../config":9,"../transition":30,"../utils":31,"./html":12,"./if":13,"./model":15,"./on":16,"./partial":17,"./repeat":18,"./style":19,"./view":20,"./with":21}],15:[function(require,module,exports){
+},{"../config":10,"../transition":31,"../utils":32,"./html":13,"./if":14,"./model":16,"./on":17,"./partial":18,"./repeat":19,"./style":20,"./view":21,"./with":22}],16:[function(require,module,exports){
 var utils = require('../utils'),
     isIE9 = navigator.userAgent.indexOf('MSIE 9.0') > 0,
     filter = [].filter
@@ -5455,7 +5495,7 @@ module.exports = {
         }
     }
 }
-},{"../utils":31}],16:[function(require,module,exports){
+},{"../utils":32}],17:[function(require,module,exports){
 var utils    = require('../utils')
 
 /**
@@ -5514,7 +5554,7 @@ module.exports = {
         this.el.removeEventListener('load', this.iframeBind)
     }
 }
-},{"../utils":31}],17:[function(require,module,exports){
+},{"../utils":32}],18:[function(require,module,exports){
 var utils = require('../utils')
 
 /**
@@ -5565,7 +5605,7 @@ module.exports = {
     }
 
 }
-},{"../utils":31}],18:[function(require,module,exports){
+},{"../utils":32}],19:[function(require,module,exports){
 var utils      = require('../utils'),
     config     = require('../config')
 
@@ -5812,7 +5852,7 @@ function indexOf (vms, obj) {
     }
     return -1
 }
-},{"../config":9,"../utils":31}],19:[function(require,module,exports){
+},{"../config":10,"../utils":32}],20:[function(require,module,exports){
 var prefixes = ['-webkit-', '-moz-', '-ms-']
 
 /**
@@ -5859,7 +5899,7 @@ module.exports = {
     }
 
 }
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 /**
  *  Manages a conditional child VM using the
  *  binding's value as the component ID.
@@ -5916,7 +5956,7 @@ module.exports = {
     }
 
 }
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 var utils = require('../utils')
 
 /**
@@ -5967,7 +6007,7 @@ module.exports = {
     }
 
 }
-},{"../utils":31}],22:[function(require,module,exports){
+},{"../utils":32}],23:[function(require,module,exports){
 var slice = [].slice
 
 function Emitter (ctx) {
@@ -6065,7 +6105,7 @@ EmitterProto.applyEmit = function (event) {
 }
 
 module.exports = Emitter
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var utils           = require('./utils'),
     STR_SAVE_RE     = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g,
     STR_RESTORE_RE  = /"(\d+)"/g,
@@ -6256,7 +6296,7 @@ exports.eval = function (exp, compiler, data) {
     }
     return res
 }
-},{"./utils":31}],24:[function(require,module,exports){
+},{"./utils":32}],25:[function(require,module,exports){
 var utils    = require('./utils'),
     get      = utils.get,
     slice    = [].slice,
@@ -6448,7 +6488,7 @@ function stripQuotes (str) {
         return str.slice(1, -1)
     }
 }
-},{"./utils":31}],25:[function(require,module,exports){
+},{"./utils":32}],26:[function(require,module,exports){
 // string -> DOM conversion
 // wrappers originally from jQuery, scooped from component/domify
 var map = {
@@ -6516,7 +6556,7 @@ module.exports = function (templateString) {
     }
     return frag
 }
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 var config      = require('./config'),
     ViewModel   = require('./viewmodel'),
     utils       = require('./utils'),
@@ -6705,7 +6745,7 @@ function inheritOptions (child, parent, topLevel) {
 }
 
 module.exports = ViewModel
-},{"./config":9,"./directives":14,"./filters":24,"./observer":27,"./transition":30,"./utils":31,"./viewmodel":32}],27:[function(require,module,exports){
+},{"./config":10,"./directives":15,"./filters":25,"./observer":28,"./transition":31,"./utils":32,"./viewmodel":33}],28:[function(require,module,exports){
 /* jshint proto:true */
 
 var Emitter  = require('./emitter'),
@@ -7152,7 +7192,7 @@ var pub = module.exports = {
     convert     : convert,
     convertKey  : convertKey
 }
-},{"./emitter":22,"./utils":31}],28:[function(require,module,exports){
+},{"./emitter":23,"./utils":32}],29:[function(require,module,exports){
 var toFragment = require('./fragment');
 
 /**
@@ -7200,7 +7240,7 @@ module.exports = function(template) {
     return toFragment(templateNode.outerHTML);
 }
 
-},{"./fragment":25}],29:[function(require,module,exports){
+},{"./fragment":26}],30:[function(require,module,exports){
 var openChar        = '{',
     endChar         = '}',
     ESCAPE_RE       = /[-.*+?^${}()|[\]\/\\]/g,
@@ -7297,7 +7337,7 @@ exports.parse         = parse
 exports.parseAttr     = parseAttr
 exports.setDelimiters = setDelimiters
 exports.delimiters    = [openChar, endChar]
-},{"./directive":11}],30:[function(require,module,exports){
+},{"./directive":12}],31:[function(require,module,exports){
 var endEvents  = sniffEndEvents(),
     config     = require('./config'),
     // batch enter animations so we only force the layout once
@@ -7526,7 +7566,7 @@ function sniffEndEvents () {
 // Expose some stuff for testing purposes
 transition.codes = codes
 transition.sniff = sniffEndEvents
-},{"./batcher":6,"./config":9}],31:[function(require,module,exports){
+},{"./batcher":7,"./config":10}],32:[function(require,module,exports){
 var config       = require('./config'),
     toString     = ({}).toString,
     win          = window,
@@ -7853,7 +7893,7 @@ function enableDebug () {
         }
     }
 }
-},{"./config":9,"./fragment":25,"./template-parser.js":28,"./viewmodel":32}],32:[function(require,module,exports){
+},{"./config":10,"./fragment":26,"./template-parser.js":29,"./viewmodel":33}],33:[function(require,module,exports){
 var Compiler   = require('./compiler'),
     utils      = require('./utils'),
     transition = require('./transition'),
@@ -8045,4 +8085,4 @@ function query (el) {
 
 module.exports = ViewModel
 
-},{"./batcher":6,"./compiler":8,"./transition":30,"./utils":31}]},{},[1]);
+},{"./batcher":7,"./compiler":9,"./transition":31,"./utils":32}]},{},[1]);

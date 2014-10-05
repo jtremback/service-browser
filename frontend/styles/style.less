@@ -1,8 +1,25 @@
 @import "./bootstrap/bootstrap.less";
 @import "./variables.less";
 
+.header-logo-text {
+  font-family: "Dosis", sans-serif;
+  font-size: 70px;
+  margin-bottom: 70px;
+}
+
+.brand-color-text {
+  color: @brand-primary;
+}
+
 .service-box {
   background: @gray-lighter;
   border: 0;
   margin-bottom: 30px;
+  position: relative;
+  overflow: hidden;
+  i {
+    font-size: 30px;
+    color: @brand-primary;
+    opacity: .5;
+  }
 }

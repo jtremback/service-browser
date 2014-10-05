@@ -16,6 +16,11 @@ gulp.task('browserify', function() {
     .pipe(gulp.dest('./frontend/build/'));
 });
 
+gulp.task('fonts', function () {
+  return gulp.src('./frontend/font-awesome/**/*.*')
+    .pipe(gulp.dest('./frontend/build/font-awesome'));
+});
+
 gulp.task('less', function () {
   return gulp.src('./frontend/styles/style.less')
     .pipe(gulpLess({ paths: ['./frontend/styles'] }))
@@ -31,7 +36,7 @@ gulp.task('jade', function () {
     .pipe(gulp.dest('./frontend/'));
 });
 
-gulp.task('default', [ 'browserify', 'less', 'jade' ]);
+gulp.task('default', [ 'browserify', 'less', 'fonts', 'jade' ]);
 
 //// WATCH
 gulp.task('watch', [ 'default' ], function () {

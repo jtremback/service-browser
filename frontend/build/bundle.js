@@ -6,19 +6,30 @@ var Vue = require('vue');
 var columnize = require('./columnize.js');
 var sockets = require('./sockets.js'); // Start a listenin'
 
+Vue.filter('type-icons', function (type) {
+  var map = {
+    storage: 'fa-cloud',
+    messaging: 'fa-envelope',
+    sound: 'fa-headphones',
+    book: 'fa-book'
+  };
+
+  return map[type];
+});
 
 var services = [];
 
-// sockets.on('serviceUp', function (key, value) {
-//   // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
-//   services.$add(key.replace(/\./g, ''), value);
-//   console.log(JSON.stringify(services,null,2))
-// });
+sockets.on('serviceUp', function (service) {
+  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
+  // services.$add(key.replace(/\./g, ''), value);
+  console.log(JSON.stringify(service,null,2))
+  services.push(service);
+});
 
-// sockets.on('serviceDown', function (key, value) {
-//   // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
-//   services.$delete(key.replace(/\./g, ''), value);
-// });
+sockets.on('serviceDown', function (service) {
+  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
+  // services.$delete(key.replace(/\./g, ''), value);
+});
 
 
 Vue.component('home', {
@@ -28,7 +39,7 @@ Vue.component('home', {
 Vue.component('service-columns', {
   template: '#service-columns',
   data: {
-    services: [1,2,3,4,5,6,7,8,9]
+    services: services
   },
   computed: {
     columns: {
@@ -63,8 +74,8 @@ router.init();
 'use strict';
 
 // This takes an array and sorts it into an array of columns,
-// which can be arranged horizontally to create a nice packed
-// sorting effect when items have differing heights.
+// which can be arranged horizontally to create a nice
+// packed effect when items have differing heights.
 //
 // columns: 3, source: [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
 //
@@ -110,9 +121,9 @@ sock.onmessage = function(e) {
 
   if (data.type === 'service') {
     if (data.action === 'up') {
-      module.exports.emit('serviceUp', data.service.fullname, data.service);
+      module.exports.emit('serviceUp', data.service);
     } else if(data.action === 'down') {
-      module.exports.emit('serviceDown', data.service.fullname, data.service);
+      module.exports.emit('serviceDown', data.service);
     }
   }
 };
@@ -125,26 +136,26 @@ sock.onclose = function() {
 
 function serviceUp (service) {
   if (service.txtRecord && service.txtRecord.scope === 'peoplesopen.net') {
-    service.host = service.host.replace(/\.$/, '');
+    // service.host = service.host.replace(/\.$/, '');
 
-    if (service.type.name === 'http') {
-      service.link = {
-        url: 'http://' + service.addresses[0] + ':' + service.port + '/',
-        name: service.name
-      };
-    } else if (service.type.name === 'https') {
-      service.link = {
-        url: 'https://' + service.addresses[0] + ':' + service.port + '/',
-        name: service.name
-      };
-    }
+    // if (service.type.name === 'http') {
+    //   service.link = {
+    //     url: 'http://' + service.addresses[0] + ':' + service.port + '/',
+    //     name: service.name
+    //   };
+    // } else if (service.type.name === 'https') {
+    //   service.link = {
+    //     url: 'https://' + service.addresses[0] + ':' + service.port + '/',
+    //     name: service.name
+    //   };
+    // }
 
-    module.exports.emit('serviceUp', service.fullname, service);
+    module.exports.emit('serviceUp', service);
   }
 }
 
 function serviceDown (service) {
-  module.exports.emit('serviceDown', service.fullname, service);
+  module.exports.emit('serviceDown', service);
 }
 
 // [ [1, 4, 7], [2, 5, 8], [3, 6, 9] ]

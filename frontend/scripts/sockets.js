@@ -16,9 +16,9 @@ sock.onmessage = function(e) {
 
   if (data.type === 'service') {
     if (data.action === 'up') {
-      module.exports.emit('serviceUp', data.service.fullname, data.service);
+      module.exports.emit('serviceUp', data.service);
     } else if(data.action === 'down') {
-      module.exports.emit('serviceDown', data.service.fullname, data.service);
+      module.exports.emit('serviceDown', data.service);
     }
   }
 };
@@ -31,26 +31,26 @@ sock.onclose = function() {
 
 function serviceUp (service) {
   if (service.txtRecord && service.txtRecord.scope === 'peoplesopen.net') {
-    service.host = service.host.replace(/\.$/, '');
+    // service.host = service.host.replace(/\.$/, '');
 
-    if (service.type.name === 'http') {
-      service.link = {
-        url: 'http://' + service.addresses[0] + ':' + service.port + '/',
-        name: service.name
-      };
-    } else if (service.type.name === 'https') {
-      service.link = {
-        url: 'https://' + service.addresses[0] + ':' + service.port + '/',
-        name: service.name
-      };
-    }
+    // if (service.type.name === 'http') {
+    //   service.link = {
+    //     url: 'http://' + service.addresses[0] + ':' + service.port + '/',
+    //     name: service.name
+    //   };
+    // } else if (service.type.name === 'https') {
+    //   service.link = {
+    //     url: 'https://' + service.addresses[0] + ':' + service.port + '/',
+    //     name: service.name
+    //   };
+    // }
 
-    module.exports.emit('serviceUp', service.fullname, service);
+    module.exports.emit('serviceUp', service);
   }
 }
 
 function serviceDown (service) {
-  module.exports.emit('serviceDown', service.fullname, service);
+  module.exports.emit('serviceDown', service);
 }
 
 // [ [1, 4, 7], [2, 5, 8], [3, 6, 9] ]

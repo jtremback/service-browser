@@ -6267,8 +6267,23 @@ button.close {
     display: none !important;
   }
 }
+.header-logo-text {
+  font-family: "Dosis", sans-serif;
+  font-size: 70px;
+  margin-bottom: 70px;
+}
+.brand-color-text {
+  color: #0db445;
+}
 .service-box {
   background: #eeeeee;
   border: 0;
   margin-bottom: 30px;
+  position: relative;
+  overflow: hidden;
+}
+.service-box i {
+  font-size: 30px;
+  color: #0db445;
+  opacity: .5;
 }

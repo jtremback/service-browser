@@ -5,19 +5,30 @@ var Vue = require('vue');
 var columnize = require('./columnize.js');
 var sockets = require('./sockets.js'); // Start a listenin'
 
+Vue.filter('type-icons', function (type) {
+  var map = {
+    storage: 'fa-cloud',
+    messaging: 'fa-envelope',
+    sound: 'fa-headphones',
+    book: 'fa-book'
+  };
+
+  return map[type];
+});
 
 var services = [];
 
-// sockets.on('serviceUp', function (key, value) {
-//   // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
-//   services.$add(key.replace(/\./g, ''), value);
-//   console.log(JSON.stringify(services,null,2))
-// });
+sockets.on('serviceUp', function (service) {
+  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
+  // services.$add(key.replace(/\./g, ''), value);
+  console.log(JSON.stringify(service,null,2))
+  services.push(service);
+});
 
-// sockets.on('serviceDown', function (key, value) {
-//   // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
-//   services.$delete(key.replace(/\./g, ''), value);
-// });
+sockets.on('serviceDown', function (service) {
+  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
+  // services.$delete(key.replace(/\./g, ''), value);
+});
 
 
 Vue.component('home', {
@@ -27,7 +38,7 @@ Vue.component('home', {
 Vue.component('service-columns', {
   template: '#service-columns',
   data: {
-    services: [1,2,3,4,5,6,7,8,9]
+    services: services
   },
   computed: {
     columns: {

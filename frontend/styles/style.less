@@ -12,14 +12,42 @@
 }
 
 .service-box {
+  @left-width: 40px;
+  @left-margin: 15px;
   background: @gray-lighter;
   border: 0;
   margin-bottom: 30px;
   position: relative;
   overflow: hidden;
   i {
-    font-size: 30px;
+    font-size: 25px;
     color: @brand-primary;
     opacity: .5;
+  }
+  .panel-body {
+    .left {
+      float: left;
+      width: @left-width;
+      margin-right: @left-margin;
+      text-align: center;
+    }
+    .voter {
+      margin-bottom: 10px;
+      i.fa {
+        // font-size: 35px;
+        display: block;
+        opacity: .2;
+        &.activated {
+          opacity: 1
+        }
+      }
+      .vote-count {
+        font-size: 18px;
+      }
+    }
+    .right {
+      float: left;
+      width: calc(~"100% - "@left-width + @left-margin);
+    }
   }
 }

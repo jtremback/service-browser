@@ -7,7 +7,7 @@ html(lang='en')
     title Service Browser
     link(href='build/style.css', rel='stylesheet')
     link(rel="stylesheet", href="build/font-awesome/css/font-awesome.min.css")
-    |<link href="http://fonts.googleapis.com/css?family=Dosis:400,600,700" rel="stylesheet" type="text/css">
+    //- |<link href="http://fonts.googleapis.com/css?family=Dosis:400,600,700" rel="stylesheet" type="text/css">
   body
 
     #main
@@ -21,12 +21,20 @@ html(lang='en')
     script#service-columns(type="x-template")
       .row
         .col-sm-4(v-repeat="column: columns")
-          .service-box.panel.panel-default(v-repeat="column")
-            .panel-body
-              h3 {{ name }}
-              p {{ txtRecord.description }}
-              div
-                i.pull-right.fa(class="{{ txtRecord.type | type-icons }}")
+          div(v-repeat="column" v-component="service-box")
+
+    script#service-box(type="x-template")
+      .service-box.panel.panel-default
+        .panel-body
+          .left
+            .voter
+              i.fa.fa-caret-up(v-class="activated: up_vote", v-on="click: upVote")
+              .vote-count 3.4k
+              i.fa.fa-caret-down(v-class="activated: down_vote", v-on="click: downVote")
+            i.fa(v-class="txtRecord.type | type-icons")
+          .right
+            h3 {{ name }}
+            p {{ txtRecord.description }}
 
 
 

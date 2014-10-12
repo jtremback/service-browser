@@ -6283,7 +6283,30 @@ button.close {
   overflow: hidden;
 }
 .service-box i {
-  font-size: 30px;
+  font-size: 25px;
   color: #0db445;
   opacity: .5;
+}
+.service-box .panel-body .left {
+  float: left;
+  width: 40px;
+  margin-right: 15px;
+  text-align: center;
+}
+.service-box .panel-body .voter {
+  margin-bottom: 10px;
+}
+.service-box .panel-body .voter i.fa {
+  display: block;
+  opacity: .2;
+}
+.service-box .panel-body .voter i.fa.activated {
+  opacity: 1;
+}
+.service-box .panel-body .voter .vote-count {
+  font-size: 18px;
+}
+.service-box .panel-body .right {
+  float: left;
+  width: calc(100% -  55px);
 }

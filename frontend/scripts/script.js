@@ -2,8 +2,11 @@
 
 var director = require('director');
 var Vue = require('vue');
+var localforage = require('localforage');
+var _ = require('underscore');
+
 var columnize = require('./columnize.js');
-var sockets = require('./sockets.js'); // Start a listenin'
+var socket = require('./socket.js'); // Start a listenin'
 
 Vue.filter('type-icons', function (type) {
   var map = {
@@ -18,22 +21,49 @@ Vue.filter('type-icons', function (type) {
 
 var services = [];
 
-sockets.on('serviceUp', function (service) {
-  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
-  // services.$add(key.replace(/\./g, ''), value);
-  console.log(JSON.stringify(service,null,2))
-  services.push(service);
+socket.messages.on('serviceUp', function (service) {
+  localforage.getItem(service.fullname, function (err, local_service) {
+    service = _.extend(local_service || {}, service); // Attach properties from localstorage
+    services.push(service);
+  });
 });
 
-sockets.on('serviceDown', function (service) {
-  // $add doesn't work well with dots: https://github.com/yyx990803/vue/issues/461
-  // services.$delete(key.replace(/\./g, ''), value);
+socket.messages.on('serviceDown', function (service) {
+  // stuff
 });
 
 
 Vue.component('home', {
   template: '#home'
 });
+
+
+Vue.component('service-box', {
+  template: '#service-box',
+  methods: {
+    upVote: function () {
+      var _this = this;
+      if (!this.up_vote) {
+        this.up_vote = true;
+        this.down_vote = false;
+        localforage.setItem(this.fullname, this.$data, function () {
+          socket.send(_this.fullname, 'up_vote');
+        });
+      }
+    },
+    downVote: function () {
+      var _this = this;
+      if (!this.down_vote) {
+        this.down_vote = true;
+        this.up_vote = false;
+        localforage.setItem(this.fullname, this.$data, function () {
+          socket.send(_this.fullname, 'down_vote');
+        });
+      }
+    }
+  },
+});
+
 
 Vue.component('service-columns', {
   template: '#service-columns',
@@ -45,15 +75,14 @@ Vue.component('service-columns', {
       $get: function () {
         return columnize(this.services, 3);
       }
-    }
+    },
+    // json: {
+    //   $get: function () {
+    //     return JSON.stringify(this.services,null,2);
+    //   }
+    // }
   }
 });
-
-// Vue.component('service-box', {
-//   template: '#service-box',
-//   replace: false
-// });
-
 
 var main = new Vue({
   el: '#main',

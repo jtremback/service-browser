@@ -15,6 +15,7 @@ var toStream = require('pull-stream-to-stream');
 var services = exports.services = level(path.resolve('db/services.db'), { encoding: 'json' });
 var profile = exports.profile = level(path.resolve('db/profiles.db'), { encoding: 'json' });
 
+var config = require('../config.js');
 
 // create a scuttlebutt instance and add a message to it.
 
@@ -48,7 +49,7 @@ var ssb = require('secure-scuttlebutt/create')('db/scuttlebutt.db');
 
 var secrets_path = path.resolve(__dirname, '../.secrets.json');
 
-function initFeed (secrets_path) {
+function initFeed (secrets_path, callback) {
   fs.readFile(secrets_path, { encoding: 'utf8' }, function (err, data) {
     var feed;
     var map = {
@@ -61,48 +62,49 @@ function initFeed (secrets_path) {
 
     if (err) {
       feed = ssb.createFeed();
+      // Possibly have some kind of prompt
       fs.writeFile(secrets_path, JSON.stringify(feed));
-      return feed;
+      return callback(feed);
     }
 
     data = mapTypes(JSON.parse(data), map);
     feed = ssb.createFeed(data.keys);
-
-    return feed;
+    console.log('feed', feed)
+    return callback(feed);
   });
 }
 
-//   // setInterval(function () {
-//   //   // feed.add appends a message to your key's chain.
-//   //   feed.add('msg', Math.random(), function (err, msg, hash) {
-//   //     //the message as it appears in the database.
-//   //     console.log('msg', msg);
+exports.addPeer = function (address, id, callback) {
+    net.createServer(function (stream) {
+      stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
+    }).listen(config.port);
 
-//   //     //and it's hash
-//   //     console.log('hash', hash);
-//   //   });
-//   // }, 1995);
+    var stream = net.connect(id);
+    stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
+};
 
-//   // setInterval(function () {
-//     // get all messages for a particular key.
 
-//   // }, 2000);
+// initFeed(secrets_path, function (err, feed) {
+//   setInterval(function () {
+//     // feed.add appends a message to your key's chain.
+//     feed.add('msg', Math.random(), function (err, msg, hash) {
+//       //the message as it appears in the database.
+//       console.log('msg', msg);
 
-//   // // create a server for replication.
+//       //and it's hash
+//       console.log('hash', hash);
+//     });
+//   }, 1995);
+
+
 //   net.createServer(function (stream) {
-//     // secure-scuttlebutt uses pull-streams so
-//     // convert it into a node stream before piping.
 //     stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
 //   }).listen(1234);
 
-//   //create another database to replicate with:
-
 //   var ssb2 = require('secure-scuttlebutt/create')('db/scuttlebutt2.db');
-//   //follow the key we created before.
+//   console.log(feed)
 //   ssb2.follow(feed.id);
 
-//   // replicate from the server.
-//   // this will pull the messages by feed1 into this database.
 //   var stream = net.connect(1234);
 //   stream.pipe(toStream(ssb2.createReplicationStream())).pipe(stream);
 
@@ -114,9 +116,4 @@ function initFeed (secrets_path) {
 //   );
 // });
 
-
-// // the first message in the feed is always the public key.
-// //add a message to your feed.
-
-
-
+// module.exports = level(path.resolve('db/services.db'), { encoding: 'json' });

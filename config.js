@@ -1,5 +1,5 @@
 
 module.exports = {
     hostname: 'localhost',
-    port: 8001
+    port: parseInt(process.env.PORT, 10) || 8001
 };

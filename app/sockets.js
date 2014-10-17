@@ -1,6 +1,6 @@
 'use strict';
 
-var db = require('./db.js');
+// var db = require('./db.js');
 var sockjs = require('sockjs');
 
 var clients = [];

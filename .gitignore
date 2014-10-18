@@ -1,5 +1,5 @@
-feed.json
-peers.json
+feed*
+peers*
 node_modules
 npm-debug.log
 *.db

@@ -1,119 +1,89 @@
 'use strict';
 
-var level = require('level');
-var path = require('path');
-var pull = require('pull-stream');
-var Buffer = require('buffer').Buffer;
-var colors = require('colors');
-var path = require('path');
-var fs = require('fs');
+// var level = require('level');
+// var path = require('path');
+// var pull = require('pull-stream');
+// var colors = require('colors');
+// var path = require('path');
 var mapTypes = require('./map-types.js');
+var fs = require('fs');
+var _ = require('underscore');
 
 var net = require('net');
 var toStream = require('pull-stream-to-stream');
 
-var services = exports.services = level(path.resolve('db/services.db'), { encoding: 'json' });
-var profile = exports.profile = level(path.resolve('db/profiles.db'), { encoding: 'json' });
-
-var config = require('../config.js');
-
-// create a scuttlebutt instance and add a message to it.
-
 var ssb = require('secure-scuttlebutt/create')('db/scuttlebutt.db');
 
-//create a feed.
-//this represents a write access / user.
-//you must pass in keys.
-//(see options section)
+var feed;
+var trusted_peers;
 
-// var feed = ssb.createFeed();
-// var message = [
-// '',
-// '',
-// 'SERVICE BROWSER INITIAL CONFIGURATION'.bold.cyan + '  ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★'.blue,
-// 'Since you don\'t have a .secrets.json file configured, we\'re going',
-// 'to generate a new profile for you. Copy the green text below and',
-// 'paste it into a file called .secrets.json in',
-// path.resolve(__dirname, '../.secrets.json')
-// ].join('\n');
-// console.log(message);
-// console.log(JSON.stringify(feed).green);
 
-// var manifest = {
-//   id: Buffer,
-//   keys: {
-//     private: Buffer,
-//     public: Buffer
-//   }
-// };
+// opts = {
+//   peer_file,
+//   feed_file,
+//   sync_port
+// }
 
-var secrets_path = path.resolve(__dirname, '../.secrets.json');
+exports.start = function (opts, callback) {
+  // Listen with replication stream
+  net.createServer(function (stream) {
+    console.log('SERVER CREATED');
+    stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
+  })
+  .listen(opts.sync_port, function (err) {
+    if (err) { return callback(err); }
 
-function initFeed (secrets_path, callback) {
-  fs.readFile(secrets_path, { encoding: 'utf8' }, function (err, data) {
-    var feed;
-    var map = {
-      id: 'buffer',
-      keys: {
+    fs.readFile(opts.feed_file, { encoding: 'utf8' }, function (err, string) {
+      var map = {
         private: 'buffer',
         public: 'buffer'
+      };
+
+      if (string) {
+        // deserialize the buffers using the type_map
+        var keys = mapTypes(JSON.parse(string), map);
+        // create a new feed
+        feed = ssb.createFeed(keys);
+
+        console.log('LOADED FROM FEED FILE: ', opts.feed_file);
+      } else {
+        feed = ssb.createFeed();
+
+        var new_feed = JSON.stringify(feed.keys);
+        fs.writeFile(opts.feed_file, new_feed);
+
+        console.log('CREATED FEED FILE: ', opts.feed_file);
       }
-    };
 
-    if (err) {
-      feed = ssb.createFeed();
-      // Possibly have some kind of prompt
-      fs.writeFile(secrets_path, JSON.stringify(feed));
-      return callback(feed);
+      console.log('FEED: ', JSON.stringify(feed));
+
+      return initPeerFile(feed);
+    });
+
+    function initPeerFile (new_feed) {
+      fs.readFile(opts.peer_file, { encoding: 'utf8' }, function (err, string) {
+        if (string) {
+          trusted_peers = JSON.parse(string);
+        } else {
+          trusted_peers = [];
+        }
+
+        return callback(null, new_feed);
+      });
     }
-
-    data = mapTypes(JSON.parse(data), map);
-    feed = ssb.createFeed(data.keys);
-    console.log('feed', feed)
-    return callback(feed);
   });
-}
-
-exports.addPeer = function (address, id, callback) {
-    net.createServer(function (stream) {
-      stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
-    }).listen(config.port);
-
-    var stream = net.connect(id);
-    stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
 };
 
+exports.addPeer = function (address, id, callback) {
+  console.log('ADD PEER: ', address, id);
 
-// initFeed(secrets_path, function (err, feed) {
-//   setInterval(function () {
-//     // feed.add appends a message to your key's chain.
-//     feed.add('msg', Math.random(), function (err, msg, hash) {
-//       //the message as it appears in the database.
-//       console.log('msg', msg);
+  var stream = net.connect(address);
+  stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
 
-//       //and it's hash
-//       console.log('hash', hash);
-//     });
-//   }, 1995);
+  if (_.contains(trusted_peers, id)) {
+    console.log('FOLLOWING TRUSTED PEER: ' + id);
+    ssb.follow(id);
+  }
 
-
-//   net.createServer(function (stream) {
-//     stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
-//   }).listen(1234);
-
-//   var ssb2 = require('secure-scuttlebutt/create')('db/scuttlebutt2.db');
-//   console.log(feed)
-//   ssb2.follow(feed.id);
-
-//   var stream = net.connect(1234);
-//   stream.pipe(toStream(ssb2.createReplicationStream())).pipe(stream);
-
-//   pull(
-//     ssb2.createHistoryStream(feed.id, 0, false),
-//     pull.collect(function (err, ary) {
-//       console.log('createHistoryStream', ary);
-//     })
-//   );
-// });
-
-// module.exports = level(path.resolve('db/services.db'), { encoding: 'json' });
+  if (callback) { return callback(null); }
+};

@@ -1,48 +1,62 @@
 'use strict';
 
-// var db = require('./db.js');
+var db = require('./db.js');
 
 var mdns = require('mdns2');
 var util = require('util');
 // var sockets = require('./sockets.js');
 var _ = require('underscore');
-var access = require('safe-access');
-
-var config = require('../config.js');
 
 // TODO need to listen for all service types
 // dev note: try udisks-ssh instead of http
 exports.browser = mdns.createBrowser(mdns.makeServiceType('http', 'tcp'));
 
-mdns.createAdvertisement('_http._tcp', config.port, {txtRecord: {
-    name: 'Service Browser',
-    description: 'Browse services on People\'s Open Network',
-    scope: 'peoplesopen.net',
-    type: 'service-browser'
-}});
+// opts = {
+//   trusted_peers,
+//   feed_file,
+//   sync_port,
+//   mdns_port
+// }
+
+exports.start = function (opts) {
+  exports.browser.start();
+  db.start(opts, function (err, feed) {
+
+    mdns.createAdvertisement('_http._tcp', opts.sync_port, {
+      txtRecord: {
+        name: 'Service Browser',
+        description: 'Browse services on People\'s Open Network',
+        id: feed.id,
+        scope: 'peoplesopen.net',
+        type: 'service-browser'
+      }
+    });
+
+  });
+};
 
 exports.browser.on('serviceUp', function (service) {
-  console.log('serviceUp', service);
-  // ignore other service browsers
+  service = _.omit(service, 'rawTxtRecord');
+  console.log('SERVICE UP: ', service);
+  // connect to other service browsers
   if (service.txtRecord &&
      (service.txtRecord.scope === 'peoplesopen.net') &&
      (service.txtRecord.type === 'service-browser')) {
-    console.log('ignoring other service browser on ' + util.inspect(service.addresses));
+    console.log('SERVICE BROWSER DETECTED');
+    db.addPeer(service.addresses[1] + ':' + service.port, service.txtRecord.id);
   } else {
-    service = _.omit(service, 'rawTxtRecord');
+    // db.put(service.fullname, service, function (err) {
+    //   if (err) { console.log(err); }
+    //   console.log('remembering service ' + service.fullname);
+    //   sockets.broadcast({
+    //     type: 'service',
+    //     action: 'up',
+    //     service: service
+    //   });
+    // });
   }
-
-
-  // db.put(service.fullname, service, function (err) {
-  //   if (err) { console.log(err); }
-  //   console.log('remembering service ' + service.fullname);
-  //   sockets.broadcast({
-  //     type: 'service',
-  //     action: 'up',
-  //     service: service
-  //   });
-  // });
 });
+
 
 exports.browser.on('serviceDown', function (service) {
     // ignore other service browsers

@@ -12,4 +12,5 @@ node_modules
 npm-debug.log
 db/
 db/
+*.db
 *.swp

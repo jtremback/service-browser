@@ -24,23 +24,25 @@
 */
 'use strict';
 
-var path = require('path');
-var http = require('http');
-var express = require('express');
-var sockets = require('./app/sockets.js');
+// var path = require('path');
+// var http = require('http');
+// var express = require('express');
+// var sockets = require('./app/sockets.js');
 var services = require('./app/services.js');
 
 var config = require('./config.js');
 
-services.browser.start();
+services.start(config);
 
-var app = express();
-var server = http.createServer(app);
+// services.browser.start(config);
 
-sockets.socket.installHandlers(server, { prefix: '/websocket' });
+// var app = express();
+// var server = http.createServer(app);
 
-// serve static content from the /www dir at /static
-app.use('/static/', express.static(path.join(__dirname, 'frontend')));
+// sockets.socket.installHandlers(server, { prefix: '/websocket' });
 
-console.log('Listening on ' + config.hostname + ':' + config.port);
-server.listen(config.port, config.hostname);
+// // serve static content from the /www dir at /static
+// app.use('/static/', express.static(path.join(__dirname, 'frontend')));
+
+// console.log('Listening on ' + config.hostname + ':' + config.port);
+// server.listen(config.port, config.hostname);

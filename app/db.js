@@ -35,7 +35,6 @@ exports.start = function (opts, callback) {
 
     fs.readFile(opts.feed_file, { encoding: 'utf8' }, function (err, string) {
       if (string) {
-        debugger
         // deserialize the buffers
         var keys = JSON.parse(string);
         keys = {
@@ -76,14 +75,16 @@ exports.start = function (opts, callback) {
 };
 
 exports.addPeer = function (address, id, callback) {
-  console.log('ADD PEER: ', address, id);
+  if (id !== JSON.stringify(feed.id)) { // Don't connect to self. That would just be dumb.
+    console.log('ADD PEER: ', address, id);
 
-  var stream = net.connect(address);
-  stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
+    var stream = net.connect(address);
+    stream.pipe(toStream(ssb.createReplicationStream())).pipe(stream);
 
-  if (_.contains(trusted_peers, id)) {
-    console.log('FOLLOWING TRUSTED PEER: ' + id);
-    ssb.follow(new Buffer(JSON.parse(id)));
+    if (_.contains(trusted_peers, id)) {
+      console.log('FOLLOWING TRUSTED PEER: ' + id);
+      ssb.follow(new Buffer(JSON.parse(id)));
+    }
   }
 
   if (callback) { return callback(null); }

@@ -26,7 +26,7 @@ exports.start = function (opts) {
       txtRecord: {
         name: 'Service Browser',
         description: 'Browse services on People\'s Open Network',
-        id: feed.id,
+        id: JSON.stringify(feed.id),
         scope: 'peoplesopen.net',
         type: 'service-browser'
       }
@@ -43,7 +43,7 @@ exports.browser.on('serviceUp', function (service) {
      (service.txtRecord.scope === 'peoplesopen.net') &&
      (service.txtRecord.type === 'service-browser')) {
     console.log('SERVICE BROWSER DETECTED');
-    db.addPeer(service.addresses[1] + ':' + service.port, service.txtRecord.id);
+    db.addPeer(/*service.addresses[1] + ':' +*/ service.port, service.txtRecord.id);
   } else {
     // db.put(service.fullname, service, function (err) {
     //   if (err) { console.log(err); }

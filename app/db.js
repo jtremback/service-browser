@@ -5,7 +5,7 @@
 // var pull = require('pull-stream');
 // var colors = require('colors');
 // var path = require('path');
-var mapTypes = require('./map-types.js');
+// var mapTypes = require('./map-types.js');
 var fs = require('fs');
 var _ = require('underscore');
 
@@ -34,14 +34,15 @@ exports.start = function (opts, callback) {
     if (err) { return callback(err); }
 
     fs.readFile(opts.feed_file, { encoding: 'utf8' }, function (err, string) {
-      var map = {
-        private: 'buffer',
-        public: 'buffer'
-      };
-
       if (string) {
-        // deserialize the buffers using the type_map
-        var keys = mapTypes(JSON.parse(string), map);
+        debugger
+        // deserialize the buffers
+        var keys = JSON.parse(string);
+        keys = {
+          private: new Buffer(keys.private),
+          public: new Buffer(keys.public)
+        };
+
         // create a new feed
         feed = ssb.createFeed(keys);
 
@@ -57,10 +58,10 @@ exports.start = function (opts, callback) {
 
       console.log('FEED: ', JSON.stringify(feed));
 
-      return initPeerFile(feed);
+      return loadPeers(feed);
     });
 
-    function initPeerFile (new_feed) {
+    function loadPeers (new_feed) {
       fs.readFile(opts.peer_file, { encoding: 'utf8' }, function (err, string) {
         if (string) {
           trusted_peers = JSON.parse(string);
@@ -82,7 +83,7 @@ exports.addPeer = function (address, id, callback) {
 
   if (_.contains(trusted_peers, id)) {
     console.log('FOLLOWING TRUSTED PEER: ' + id);
-    ssb.follow(id);
+    ssb.follow(new Buffer(JSON.parse(id)));
   }
 
   if (callback) { return callback(null); }

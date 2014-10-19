@@ -14,23 +14,23 @@ exports.browser = mdns.createBrowser(mdns.makeServiceType('http', 'tcp'));
 // opts = {
 //   trusted_peers,
 //   feed_file,
-//   sync_port,
-//   mdns_port
+//   sync_port
 // }
 
 exports.start = function (opts) {
-  exports.browser.start();
   db.start(opts, function (err, feed) {
+    exports.browser.start();
 
     mdns.createAdvertisement('_http._tcp', opts.sync_port, {
+      name: feed.id.toString('base64'),
       txtRecord: {
         name: 'Service Browser',
         description: 'Browse services on People\'s Open Network',
-        id: JSON.stringify(feed.id),
         scope: 'peoplesopen.net',
         type: 'service-browser'
       }
-    });
+    }).start();
+
 
   });
 };
@@ -43,7 +43,7 @@ exports.browser.on('serviceUp', function (service) {
      (service.txtRecord.scope === 'peoplesopen.net') &&
      (service.txtRecord.type === 'service-browser')) {
     console.log('SERVICE BROWSER DETECTED');
-    db.addPeer(/*service.addresses[1] + ':' +*/ service.port, service.txtRecord.id);
+    db.addPeer(/*service.addresses[1] + ':' +*/ service.port, service.name);
   } else {
     // db.put(service.fullname, service, function (err) {
     //   if (err) { console.log(err); }

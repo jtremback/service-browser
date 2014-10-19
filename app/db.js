@@ -12,7 +12,7 @@ var _ = require('underscore');
 var net = require('net');
 var toStream = require('pull-stream-to-stream');
 
-var ssb = require('secure-scuttlebutt/create')('db/scuttlebutt.db');
+var ssb;
 
 var feed;
 var trusted_peers;
@@ -25,6 +25,7 @@ var trusted_peers;
 // }
 
 exports.start = function (opts, callback) {
+  ssb = require('secure-scuttlebutt/create')(opts.scuttlebutt);
   // Listen with replication stream
   net.createServer(function (stream) {
     console.log('SERVER CREATED');
@@ -36,10 +37,10 @@ exports.start = function (opts, callback) {
     fs.readFile(opts.feed_file, { encoding: 'utf8' }, function (err, string) {
       if (string) {
         // deserialize the buffers
-        var keys = JSON.parse(string);
+        var keys = JSON.parse(string).keys;
         keys = {
-          private: new Buffer(keys.private),
-          public: new Buffer(keys.public)
+          private: new Buffer(keys.private, 'base64'),
+          public: new Buffer(keys.public, 'base64')
         };
 
         // create a new feed
@@ -49,18 +50,21 @@ exports.start = function (opts, callback) {
       } else {
         feed = ssb.createFeed();
 
-        var new_feed = JSON.stringify(feed.keys);
-        fs.writeFile(opts.feed_file, new_feed);
+        var serialized = JSON.stringify({
+          id: feed.id.toString('base64'),
+          keys: {
+            private: feed.keys.private.toString('base64'),
+            public: feed.keys.public.toString('base64')
+          }
+        });
+
+        fs.writeFile(opts.feed_file, serialized);
 
         console.log('CREATED FEED FILE: ', opts.feed_file);
       }
 
       console.log('FEED: ', JSON.stringify(feed));
 
-      return loadPeers(feed);
-    });
-
-    function loadPeers (new_feed) {
       fs.readFile(opts.peer_file, { encoding: 'utf8' }, function (err, string) {
         if (string) {
           trusted_peers = JSON.parse(string);
@@ -68,14 +72,15 @@ exports.start = function (opts, callback) {
           trusted_peers = [];
         }
 
-        return callback(null, new_feed);
+        return callback(null, feed);
       });
-    }
+    });
   });
 };
 
 exports.addPeer = function (address, id, callback) {
-  if (id !== JSON.stringify(feed.id)) { // Don't connect to self. That would just be dumb.
+
+  if (id !== feed.id.toString('base64')) { // Don't connect to self. That would just be dumb.
     console.log('ADD PEER: ', address, id);
 
     var stream = net.connect(address);
@@ -83,7 +88,7 @@ exports.addPeer = function (address, id, callback) {
 
     if (_.contains(trusted_peers, id)) {
       console.log('FOLLOWING TRUSTED PEER: ' + id);
-      ssb.follow(new Buffer(JSON.parse(id)));
+      ssb.follow(new Buffer(id, 'base64'));
     }
   }
 

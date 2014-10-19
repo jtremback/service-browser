@@ -4,6 +4,7 @@ var ssb = require('./ssb.js');
 var sockjs = require('sockjs');
 var mem = require('./mem.js');
 var _ = require('underscore');
+var access = require('safe-access');
 
 var clients = [];
 
@@ -21,6 +22,16 @@ exports.broadcast = function (message) {
   });
 };
 
+var routes = {
+  services: {
+    upvote: function (service) {
+      console.log('UPVOTE: ', service);
+    },
+    downvote: function (service) {
+      console.log('DOWNVOTE: ', service);
+    }
+  }
+};
 
 exports.send_all_services = function (client) {
   Object.keys(mem).forEach(function (key) {
@@ -44,6 +55,8 @@ exports.socket.on('connection', function (conn) {
   });
 
   conn.on('data', function (message) {
-    console.log(message);
+    message = JSON.parse(message);
+    access(routes, message[0], message[1]);
+    console.log('SOCKET MESSAGE: ', message);
   });
 });

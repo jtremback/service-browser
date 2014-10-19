@@ -28,4 +28,9 @@ sock.onclose = function() {
   console.log('close');
 };
 
+sock.access = function (keypath, args) {
+  var message = JSON.stringify([ keypath, args ]);
+  sock.send(message);
+};
+
 module.exports = sock;

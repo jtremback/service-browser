@@ -67,7 +67,7 @@ Vue.component('service-box', {
         this.up_vote = true;
         this.down_vote = false;
         localforage.setItem(this.name, this.$data, function () {
-          socket.send(_this.name, 'up_vote');
+          socket.access('services.upvote()', [ _this.name ]);
         });
       }
     },
@@ -77,14 +77,12 @@ Vue.component('service-box', {
         this.down_vote = true;
         this.up_vote = false;
         localforage.setItem(this.name, this.$data, function () {
-          socket.send(_this.name, 'down_vote');
+          socket.access('services.downvote()', [ _this.name ]);
         });
       }
     }
   },
 });
-
-
 
 
 var main = new Vue({
@@ -162,6 +160,11 @@ sock.onmessage = function(e) {
 
 sock.onclose = function() {
   console.log('close');
+};
+
+sock.access = function (keypath, args) {
+  var message = JSON.stringify([ keypath, args ]);
+  sock.send(message);
 };
 
 module.exports = sock;

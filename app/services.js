@@ -1,11 +1,12 @@
 'use strict';
 
-var db = require('./db.js');
+var ssb = require('./ssb.js');
 
 var mdns = require('mdns2');
 var util = require('util');
-// var sockets = require('./sockets.js');
+var sockets = require('./sockets.js');
 var _ = require('underscore');
+var mem = require('./mem.js');
 
 // TODO need to listen for all service types
 // dev note: try udisks-ssh instead of http
@@ -18,7 +19,7 @@ exports.browser = mdns.createBrowser(mdns.makeServiceType('http', 'tcp'));
 // }
 
 exports.start = function (opts) {
-  db.start(opts, function (err, feed) {
+  ssb.start(opts, function (err, feed) {
     exports.browser.start();
 
     mdns.createAdvertisement('_http._tcp', opts.sync_port, {
@@ -43,38 +44,32 @@ exports.browser.on('serviceUp', function (service) {
      (service.txtRecord.scope === 'peoplesopen.net') &&
      (service.txtRecord.type === 'service-browser')) {
     console.log('SERVICE BROWSER DETECTED');
-    db.addPeer(/*service.addresses[1] + ':' +*/ service.port, service.name);
+    ssb.addPeer(/*service.addresses[1] + ':' +*/ service.port, service.name);
   } else {
-    // db.put(service.fullname, service, function (err) {
-    //   if (err) { console.log(err); }
-    //   console.log('remembering service ' + service.fullname);
-    //   sockets.broadcast({
-    //     type: 'service',
-    //     action: 'up',
-    //     service: service
-    //   });
-    // });
+    mem[service.name] = service;
+    sockets.broadcast({
+      type: 'service',
+      action: 'up',
+      service: service
+    });
   }
 });
 
 
+
 exports.browser.on('serviceDown', function (service) {
+    service = _.omit(service, 'rawTxtRecord');
     // ignore other service browsers
     if (service.txtRecord && service.txtRecord.scope && service.txtRecord.type && (service.txtRecord.scope == 'peoplesopen.net') && (service.txtRecord.type == 'service-browser')) {
       console.log('ignoring other service browser on ' + util.inspect(service.addresses));
     }
 
-    service = _.omit(service, 'rawTxtRecord');
-
-    // db.del(service.fullname, service, function (err) {
-    //   if (err) { console.log(err); }
-    //   console.log('forgetting service ' + service.unique);
-    //   sockets.broadcast({
-    //     type: 'service',
-    //     action: 'down',
-    //     service: service
-    //   });
-    // });
+    delete mem[service.name];
+    sockets.broadcast({
+      type: 'service',
+      action: 'down',
+      service: service
+    });
 });
 
 exports.browser.on('error', function (err) {

@@ -22,14 +22,33 @@ Vue.filter('type-icons', function (type) {
 var services = [];
 
 socket.messages.on('serviceUp', function (service) {
-  localforage.getItem(service.fullname, function (err, local_service) {
+  localforage.getItem(service.name, function (err, local_service) {
     service = _.extend(local_service || {}, service); // Attach properties from localstorage
     services.push(service);
   });
 });
 
 socket.messages.on('serviceDown', function (service) {
-  // stuff
+  var index = _.findWhere(services, { name: service.name });
+  services.$remove(index);
+  // services = _.reject(services, function (item) { // This doesn't work - why?
+  //   return item.name === service.name;
+  // });
+});
+
+
+Vue.component('service-columns', {
+  template: '#service-columns',
+  data: {
+    services: services
+  },
+  computed: {
+    columns: {
+      $get: function () {
+        return columnize(this.services, 3);
+      }
+    }
+  }
 });
 
 
@@ -46,8 +65,8 @@ Vue.component('service-box', {
       if (!this.up_vote) {
         this.up_vote = true;
         this.down_vote = false;
-        localforage.setItem(this.fullname, this.$data, function () {
-          socket.send(_this.fullname, 'up_vote');
+        localforage.setItem(this.name, this.$data, function () {
+          socket.send(_this.name, 'up_vote');
         });
       }
     },
@@ -56,8 +75,8 @@ Vue.component('service-box', {
       if (!this.down_vote) {
         this.down_vote = true;
         this.up_vote = false;
-        localforage.setItem(this.fullname, this.$data, function () {
-          socket.send(_this.fullname, 'down_vote');
+        localforage.setItem(this.name, this.$data, function () {
+          socket.send(_this.name, 'down_vote');
         });
       }
     }
@@ -65,24 +84,7 @@ Vue.component('service-box', {
 });
 
 
-Vue.component('service-columns', {
-  template: '#service-columns',
-  data: {
-    services: services
-  },
-  computed: {
-    columns: {
-      $get: function () {
-        return columnize(this.services, 3);
-      }
-    },
-    // json: {
-    //   $get: function () {
-    //     return JSON.stringify(this.services,null,2);
-    //   }
-    // }
-  }
-});
+
 
 var main = new Vue({
   el: '#main',

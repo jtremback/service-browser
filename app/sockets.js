@@ -1,7 +1,9 @@
 'use strict';
 
-// var db = require('./db.js');
+var ssb = require('./ssb.js');
 var sockjs = require('sockjs');
+var mem = require('./mem.js');
+var _ = require('underscore');
 
 var clients = [];
 
@@ -21,16 +23,14 @@ exports.broadcast = function (message) {
 
 
 exports.send_all_services = function (client) {
-  //broadcast all the services in the db to the client
-  db.createValueStream().on('data', function (service){
+  Object.keys(mem).forEach(function (key) {
     client.write(JSON.stringify({
       type: 'service',
       action: 'up',
-      service: service
+      service: mem[key]
     }));
   });
 };
-
 
 exports.socket.on('connection', function (conn) {
   clients.push(conn);
@@ -38,11 +38,12 @@ exports.socket.on('connection', function (conn) {
   exports.send_all_services(conn);
 
   conn.on('close', function() {
-    var i = clients.indexOf(conn);
-    if ( i && ( i >= 0 ) ) {
-      clients.splice(i, 1); // remove the client
-    }
+    clients = _.without(clients, conn);
 
     console.log('Client disconnected (' + clients.length + ' total)');
+  });
+
+  conn.on('data', function (message) {
+    console.log(message);
   });
 });

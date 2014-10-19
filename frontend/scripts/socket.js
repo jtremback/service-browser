@@ -13,6 +13,7 @@ sock.onopen = function() {
 
 sock.onmessage = function(e) {
   var data = JSON.parse(e.data);
+  console.log('RECIEVED MESSAGE: ', data);
 
   if (data.type === 'service') {
     if (data.action === 'up') {

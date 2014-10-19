@@ -24,25 +24,24 @@
 */
 'use strict';
 
-// var path = require('path');
-// var http = require('http');
-// var express = require('express');
-// var sockets = require('./app/sockets.js');
+var path = require('path');
+var http = require('http');
+var express = require('express');
+var sockets = require('./app/sockets.js');
+require('./app/mem.js'); // Make sure mem variable is initialized
 var services = require('./app/services.js');
 
 var config = require('./config.js');
 
 services.start(config);
 
-// services.browser.start(config);
+var app = express();
+var server = http.createServer(app);
 
-// var app = express();
-// var server = http.createServer(app);
+sockets.socket.installHandlers(server, { prefix: '/websocket' });
 
-// sockets.socket.installHandlers(server, { prefix: '/websocket' });
+// serve static content from the /www dir at /static
+app.use('/static/', express.static(path.join(__dirname, 'frontend')));
 
-// // serve static content from the /www dir at /static
-// app.use('/static/', express.static(path.join(__dirname, 'frontend')));
-
-// console.log('Listening on ' + config.hostname + ':' + config.port);
-// server.listen(config.port, config.hostname);
+console.log('Listening on ' + config.hostname + ':' + config.http_port);
+server.listen(config.http_port, config.hostname);

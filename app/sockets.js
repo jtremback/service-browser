@@ -10,19 +10,7 @@ var clients = [];
 
 exports.socket = sockjs.createServer();
 
-
-// send message to all clients
-exports.broadcast = function (message) {
-  if (typeof message !== 'string') {
-    message = JSON.stringify(message);
-  }
-
-  clients.forEach(function (client) {
-    client.write(message);
-  });
-};
-
-var routes = {
+var api = {
   services: {
     upvote: function (service) {
       console.log('UPVOTE: ', service);
@@ -33,30 +21,45 @@ var routes = {
   }
 };
 
-exports.send_all_services = function (client) {
-  Object.keys(mem).forEach(function (key) {
-    client.write(JSON.stringify({
-      type: 'service',
-      action: 'up',
-      service: mem[key]
-    }));
+// access all clients
+exports.broadcast = function (keypath, args) {
+  clients.forEach(function (client) {
+    client.access(keypath, args);
   });
 };
 
-exports.socket.on('connection', function (conn) {
-  clients.push(conn);
+exports.send_all_services = function (client) {
+  // Iterate through all services in mem and send
+  Object.keys(mem).forEach(function (key) {
+    client.access('services.up()', mem[key]);
+  });
+};
+
+exports.socket.on('connection', function (client) {
+  // Add access convenience method
+  client.access = function (keypath, args) {
+    // If single argument, wrap in array
+    args = Array.isArray(args) ? args : [ args ];
+    var message = JSON.stringify([ keypath, args ]);
+    client.write(message);
+  };
+
+  // Add client to clients array
+  clients.push(client);
   console.log('New client connected (' + clients.length + ' total)');
-  exports.send_all_services(conn);
 
-  conn.on('close', function() {
-    clients = _.without(clients, conn);
+  // Send all services in mem to client
+  exports.send_all_services(client);
 
+  client.on('close', function() {
+    // Remove from clients array
+    clients = _.without(clients, client);
     console.log('Client disconnected (' + clients.length + ' total)');
   });
 
-  conn.on('data', function (message) {
+  client.on('data', function (message) {
     message = JSON.parse(message);
-    access(routes, message[0], message[1]);
+    access(api, message[0], message[1]);
     console.log('SOCKET MESSAGE: ', message);
   });
 });

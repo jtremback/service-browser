@@ -31,8 +31,6 @@ exports.start = function (opts) {
         type: 'service-browser'
       }
     }).start();
-
-
   });
 };
 
@@ -47,29 +45,17 @@ exports.browser.on('serviceUp', function (service) {
     ssb.addPeer(/*service.addresses[1] + ':' +*/ service.port, service.name);
   } else {
     mem[service.name] = service;
-    sockets.broadcast({
-      type: 'service',
-      action: 'up',
-      service: service
-    });
+    sockets.broadcast('services.up()', service);
   }
 });
 
-
-
 exports.browser.on('serviceDown', function (service) {
     service = _.omit(service, 'rawTxtRecord');
-    // ignore other service browsers
-    if (service.txtRecord && service.txtRecord.scope && service.txtRecord.type && (service.txtRecord.scope == 'peoplesopen.net') && (service.txtRecord.type == 'service-browser')) {
-      console.log('ignoring other service browser on ' + util.inspect(service.addresses));
-    }
+
+    console.log('SERVICE DOWN: ', service);
 
     delete mem[service.name];
-    sockets.broadcast({
-      type: 'service',
-      action: 'down',
-      service: service
-    });
+    sockets.broadcast('services.down()', service);
 });
 
 exports.browser.on('error', function (err) {

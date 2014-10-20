@@ -1,105 +1,17 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
-var director = require('director');
-var Vue = require('vue');
-var localforage = require('localforage');
-var _ = require('underscore');
+var vms = require('./vms.js');
 
-var columnize = require('./columnize.js');
-var socket = require('./socket.js'); // Start a listenin'
+var api = {
+  services: vms.services
+};
 
-Vue.filter('type-icons', function (type) {
-  var map = {
-    storage: 'fa-cloud',
-    messaging: 'fa-envelope',
-    sound: 'fa-headphones',
-    book: 'fa-book'
-  };
+var sock = require('./socket.js');
 
-  return map[type];
-});
+sock.init(api);
 
-var services = [];
-
-socket.messages.on('serviceUp', function (service) {
-  localforage.getItem(service.name, function (err, local_service) {
-    service = _.extend(local_service || {}, service); // Attach properties from localstorage
-    services.push(service);
-  });
-});
-
-socket.messages.on('serviceDown', function (service) {
-  var index = _.findWhere(services, { name: service.name });
-  services.$remove(index);
-  // services = _.reject(services, function (item) { // This doesn't work - why?
-  //   return item.name === service.name;
-  // });
-});
-
-
-Vue.component('service-columns', {
-  template: '#service-columns',
-  data: {
-    services: services
-  },
-  computed: {
-    columns: {
-      $get: function () {
-        return columnize(this.services, 3);
-      }
-    }
-  }
-});
-
-
-Vue.component('home', {
-  template: '#home'
-});
-
-
-Vue.component('service-box', {
-  template: '#service-box',
-  methods: {
-    upVote: function () {
-      var _this = this;
-      if (!this.up_vote) {
-        this.up_vote = true;
-        this.down_vote = false;
-        localforage.setItem(this.name, this.$data, function () {
-          socket.access('services.upvote()', [ _this.name ]);
-        });
-      }
-    },
-    downVote: function () {
-      var _this = this;
-      if (!this.down_vote) {
-        this.down_vote = true;
-        this.up_vote = false;
-        localforage.setItem(this.name, this.$data, function () {
-          socket.access('services.downvote()', [ _this.name ]);
-        });
-      }
-    }
-  },
-});
-
-
-var main = new Vue({
-  el: '#main',
-  data: {
-    currentView: 'home'
-  }
-});
-
-var router = new director.Router({
-  '/': function() {
-    main.currentView = 'home';
-  }
-});
-
-router.init();
-},{"./columnize.js":2,"./socket.js":3,"director":6,"localforage":13,"underscore":15,"vue":36}],2:[function(require,module,exports){
+},{"./socket.js":3,"./vms.js":4}],2:[function(require,module,exports){
 'use strict';
 
 // This takes an array and sorts it into an array of columns,
@@ -136,39 +48,133 @@ module.exports = function (source, columns) {
 
 var SockJS = require('sockjs-client');
 var sock = new SockJS(window.location.origin + '/websocket');
+var access = require('safe-access');
+var api;
 
-var EventEmitter = require('events').EventEmitter;
+module.exports = sock;
 
-sock.messages = new EventEmitter();
-
-sock.onopen = function() {
-  console.log('open');
+sock.init = function (arg) {
+  api = arg;
 };
 
 sock.onmessage = function(e) {
-  var data = JSON.parse(e.data);
-  console.log('RECIEVED MESSAGE: ', data);
-
-  if (data.type === 'service') {
-    if (data.action === 'up') {
-      sock.messages.emit('serviceUp', data.service);
-    } else if (data.action === 'down') {
-      sock.messages.emit('serviceDown', data.service);
-    }
-  }
-};
-
-sock.onclose = function() {
-  console.log('close');
+  var message = JSON.parse(e.data);
+  access(api, message[0], message[1]);
+  console.log('SOCKET MESSAGE: ', message);
 };
 
 sock.access = function (keypath, args) {
+  // If single argument, wrap in array
+  args = Array.isArray(args) ? args : [ args ];
   var message = JSON.stringify([ keypath, args ]);
   sock.send(message);
 };
 
-module.exports = sock;
-},{"events":5,"sockjs-client":4}],4:[function(require,module,exports){
+},{"safe-access":15,"sockjs-client":5}],4:[function(require,module,exports){
+'use strict';
+
+var director = require('director');
+var Vue = require('vue');
+var localforage = require('localforage');
+var _ = require('underscore');
+var sock = require('./socket.js');
+
+var columnize = require('./columnize.js');
+
+Vue.filter('type-icons', function (type) {
+  var map = {
+    storage: 'fa-cloud',
+    messaging: 'fa-envelope',
+    sound: 'fa-headphones',
+    book: 'fa-book'
+  };
+
+  return map[type];
+});
+
+var services = [];
+
+exports.services = {
+  up: function (service) {
+    localforage.getItem(service.name, function (err, local_service) {
+      service = _.extend(local_service || {}, service); // Attach properties from localstorage
+
+      // If the service does not already exist in array
+      if (!_.findWhere(services, { name: service.name })) {
+        services.push(service);
+      }
+    });
+  },
+  down: function (service) {
+    // Remove service from array
+    var index = _.findWhere(services, { name: service.name });
+    services.$remove(index);
+  }
+};
+
+
+Vue.component('service-columns', {
+  template: '#service-columns',
+  data: {
+    services: services
+  },
+  computed: {
+    columns: {
+      $get: function () {
+        return columnize(this.services, 3);
+      }
+    }
+  }
+});
+
+
+Vue.component('home', {
+  template: '#home'
+});
+
+
+Vue.component('service-box', {
+  template: '#service-box',
+  methods: {
+    upVote: function () {
+      var _this = this;
+      if (!this.up_vote) {
+        this.up_vote = true;
+        this.down_vote = false;
+        localforage.setItem(this.name, this.$data, function () {
+          sock.access('services.upvote()', _this.name);
+        });
+      }
+    },
+    downVote: function () {
+      var _this = this;
+      if (!this.down_vote) {
+        this.down_vote = true;
+        this.up_vote = false;
+        localforage.setItem(this.name, this.$data, function () {
+          sock.access('services.downvote()', _this.name);
+        });
+      }
+    }
+  },
+});
+
+
+var main = new Vue({
+  el: '#main',
+  data: {
+    currentView: 'home'
+  }
+});
+
+var router = new director.Router({
+  '/': function() {
+    main.currentView = 'home';
+  }
+});
+
+router.init();
+},{"./columnize.js":2,"./socket.js":3,"director":6,"localforage":13,"underscore":16,"vue":37}],5:[function(require,module,exports){
 (function (global){
 ;__browserify_shim_require__=require;(function browserifyShim(module, exports, require, define, browserify_shim__define__module__export__) {
 /* SockJS client, version 0.3.4, http://sockjs.org, MIT License
@@ -2555,309 +2561,6 @@ if (typeof define === 'function' && define.amd) {
 }).call(global, undefined, undefined, undefined, undefined, function defineExport(ex) { module.exports = ex; });
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],5:[function(require,module,exports){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-function EventEmitter() {
-  this._events = this._events || {};
-  this._maxListeners = this._maxListeners || undefined;
-}
-module.exports = EventEmitter;
-
-// Backwards-compat with node 0.10.x
-EventEmitter.EventEmitter = EventEmitter;
-
-EventEmitter.prototype._events = undefined;
-EventEmitter.prototype._maxListeners = undefined;
-
-// By default EventEmitters will print a warning if more than 10 listeners are
-// added to it. This is a useful default which helps finding memory leaks.
-EventEmitter.defaultMaxListeners = 10;
-
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!isNumber(n) || n < 0 || isNaN(n))
-    throw TypeError('n must be a positive number');
-  this._maxListeners = n;
-  return this;
-};
-
-EventEmitter.prototype.emit = function(type) {
-  var er, handler, len, args, i, listeners;
-
-  if (!this._events)
-    this._events = {};
-
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events.error ||
-        (isObject(this._events.error) && !this._events.error.length)) {
-      er = arguments[1];
-      if (er instanceof Error) {
-        throw er; // Unhandled 'error' event
-      }
-      throw TypeError('Uncaught, unspecified "error" event.');
-    }
-  }
-
-  handler = this._events[type];
-
-  if (isUndefined(handler))
-    return false;
-
-  if (isFunction(handler)) {
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        len = arguments.length;
-        args = new Array(len - 1);
-        for (i = 1; i < len; i++)
-          args[i - 1] = arguments[i];
-        handler.apply(this, args);
-    }
-  } else if (isObject(handler)) {
-    len = arguments.length;
-    args = new Array(len - 1);
-    for (i = 1; i < len; i++)
-      args[i - 1] = arguments[i];
-
-    listeners = handler.slice();
-    len = listeners.length;
-    for (i = 0; i < len; i++)
-      listeners[i].apply(this, args);
-  }
-
-  return true;
-};
-
-EventEmitter.prototype.addListener = function(type, listener) {
-  var m;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events)
-    this._events = {};
-
-  // To avoid recursion in the case that type === "newListener"! Before
-  // adding it to the listeners, first emit "newListener".
-  if (this._events.newListener)
-    this.emit('newListener', type,
-              isFunction(listener.listener) ?
-              listener.listener : listener);
-
-  if (!this._events[type])
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  else if (isObject(this._events[type]))
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-  else
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-
-  // Check for listener leak
-  if (isObject(this._events[type]) && !this._events[type].warned) {
-    var m;
-    if (!isUndefined(this._maxListeners)) {
-      m = this._maxListeners;
-    } else {
-      m = EventEmitter.defaultMaxListeners;
-    }
-
-    if (m && m > 0 && this._events[type].length > m) {
-      this._events[type].warned = true;
-      console.error('(node) warning: possible EventEmitter memory ' +
-                    'leak detected. %d listeners added. ' +
-                    'Use emitter.setMaxListeners() to increase limit.',
-                    this._events[type].length);
-      if (typeof console.trace === 'function') {
-        // not supported in IE 10
-        console.trace();
-      }
-    }
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  var fired = false;
-
-  function g() {
-    this.removeListener(type, g);
-
-    if (!fired) {
-      fired = true;
-      listener.apply(this, arguments);
-    }
-  }
-
-  g.listener = listener;
-  this.on(type, g);
-
-  return this;
-};
-
-// emits a 'removeListener' event iff the listener was removed
-EventEmitter.prototype.removeListener = function(type, listener) {
-  var list, position, length, i;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events || !this._events[type])
-    return this;
-
-  list = this._events[type];
-  length = list.length;
-  position = -1;
-
-  if (list === listener ||
-      (isFunction(list.listener) && list.listener === listener)) {
-    delete this._events[type];
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-
-  } else if (isObject(list)) {
-    for (i = length; i-- > 0;) {
-      if (list[i] === listener ||
-          (list[i].listener && list[i].listener === listener)) {
-        position = i;
-        break;
-      }
-    }
-
-    if (position < 0)
-      return this;
-
-    if (list.length === 1) {
-      list.length = 0;
-      delete this._events[type];
-    } else {
-      list.splice(position, 1);
-    }
-
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  var key, listeners;
-
-  if (!this._events)
-    return this;
-
-  // not listening for removeListener, no need to emit
-  if (!this._events.removeListener) {
-    if (arguments.length === 0)
-      this._events = {};
-    else if (this._events[type])
-      delete this._events[type];
-    return this;
-  }
-
-  // emit removeListener for all listeners on all events
-  if (arguments.length === 0) {
-    for (key in this._events) {
-      if (key === 'removeListener') continue;
-      this.removeAllListeners(key);
-    }
-    this.removeAllListeners('removeListener');
-    this._events = {};
-    return this;
-  }
-
-  listeners = this._events[type];
-
-  if (isFunction(listeners)) {
-    this.removeListener(type, listeners);
-  } else {
-    // LIFO order
-    while (listeners.length)
-      this.removeListener(type, listeners[listeners.length - 1]);
-  }
-  delete this._events[type];
-
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  var ret;
-  if (!this._events || !this._events[type])
-    ret = [];
-  else if (isFunction(this._events[type]))
-    ret = [this._events[type]];
-  else
-    ret = this._events[type].slice();
-  return ret;
-};
-
-EventEmitter.listenerCount = function(emitter, type) {
-  var ret;
-  if (!emitter._events || !emitter._events[type])
-    ret = 0;
-  else if (isFunction(emitter._events[type]))
-    ret = 1;
-  else
-    ret = emitter._events[type].length;
-  return ret;
-};
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-
 },{}],6:[function(require,module,exports){
 
 
@@ -5738,6 +5441,85 @@ process.chdir = function (dir) {
 };
 
 },{}],15:[function(require,module,exports){
+module.exports = function access(obj, accessStr) {
+  // auto-curry here
+  if (isUndefined(accessStr)) {
+    return access.bind(null, obj);
+  }
+
+  var funcArgs = Array.prototype.slice.call(arguments, 2);
+  return helper(obj, tokenize(accessStr), null, funcArgs);
+};
+
+function helper(obj, tokens, ctx, fnArgs) {
+  if (tokens.length === 0) {
+    return obj;
+  }
+
+  var currentToken = tokens[0];
+
+  if (isUndefined(obj) || isNull(obj) ||
+    (isTokenFunctionCall(currentToken) && !isFunction(obj))) {
+    return undefined;
+  }
+
+  if (isTokenFunctionCall(currentToken)) {
+
+    return helper(obj[isArray(fnArgs[0]) ? 'apply' : 'call'](ctx, fnArgs[0]),
+      tokens.slice(1),
+      // clear context because consecutive fn calls execute in global context
+      // e.g. `a.b()()`
+      null,
+      fnArgs.slice(1));
+
+  } else if (isTokenArrayAccess(currentToken)) {
+
+    return helper(obj[parseInt(currentToken.substr(1), 10)],
+      tokens.slice(1),
+      // lookahead two tokens for function calls
+      isTokenFunctionCall(tokens[1]) ? obj : ctx,
+      fnArgs);
+
+  } else {
+
+    return helper(obj[currentToken],
+      tokens.slice(1),
+      // lookahead two tokens for function calls
+      isTokenFunctionCall(tokens[1]) ? obj : ctx,
+      fnArgs);
+
+  }
+}
+
+function isUndefined(a) {
+  return a === void 0;
+}
+
+function isNull(a) {
+  return a === null;
+}
+
+function isArray(a) {
+  return Array.isArray(a);
+}
+
+function isFunction(a) {
+  return typeof a === 'function';
+}
+
+function isTokenFunctionCall(token) {
+  return token === '()';
+}
+
+function isTokenArrayAccess(token) {
+  return /^\[\d+\]$/.test(token);
+}
+
+function tokenize(str) {
+  return str.split(/\.|(\(\))|(\[\d+?])/).filter(function(t) { return t; });
+}
+
+},{}],16:[function(require,module,exports){
 //     Underscore.js 1.7.0
 //     http://underscorejs.org
 //     (c) 2009-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -7154,7 +6936,7 @@ process.chdir = function (dir) {
   }
 }.call(this));
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var utils = require('./utils')
 
 function Batcher () {
@@ -7200,7 +6982,7 @@ BatcherProto.reset = function () {
 }
 
 module.exports = Batcher
-},{"./utils":41}],17:[function(require,module,exports){
+},{"./utils":42}],18:[function(require,module,exports){
 var Batcher        = require('./batcher'),
     bindingBatcher = new Batcher(),
     bindingId      = 1
@@ -7304,7 +7086,7 @@ BindingProto.unbind = function () {
 }
 
 module.exports = Binding
-},{"./batcher":16}],18:[function(require,module,exports){
+},{"./batcher":17}],19:[function(require,module,exports){
 var Emitter     = require('./emitter'),
     Observer    = require('./observer'),
     config      = require('./config'),
@@ -8342,7 +8124,7 @@ function getRoot (compiler) {
 }
 
 module.exports = Compiler
-},{"./binding":17,"./config":19,"./deps-parser":20,"./directive":21,"./emitter":32,"./exp-parser":33,"./observer":37,"./text-parser":39,"./utils":41,"./viewmodel":42}],19:[function(require,module,exports){
+},{"./binding":18,"./config":20,"./deps-parser":21,"./directive":22,"./emitter":33,"./exp-parser":34,"./observer":38,"./text-parser":40,"./utils":42,"./viewmodel":43}],20:[function(require,module,exports){
 var TextParser = require('./text-parser')
 
 module.exports = {
@@ -8362,7 +8144,7 @@ Object.defineProperty(module.exports, 'delimiters', {
         TextParser.setDelimiters(delimiters)
     }
 })
-},{"./text-parser":39}],20:[function(require,module,exports){
+},{"./text-parser":40}],21:[function(require,module,exports){
 var Emitter  = require('./emitter'),
     utils    = require('./utils'),
     Observer = require('./observer'),
@@ -8428,7 +8210,7 @@ module.exports = {
     }
     
 }
-},{"./emitter":32,"./observer":37,"./utils":41}],21:[function(require,module,exports){
+},{"./emitter":33,"./observer":38,"./utils":42}],22:[function(require,module,exports){
 var dirId           = 1,
     ARG_RE          = /^[\w\$-]+$/,
     FILTER_TOKEN_RE = /[^\s'"]+|'[^']+'|"[^"]+"/g,
@@ -8687,7 +8469,7 @@ function escapeQuote (v) {
 }
 
 module.exports = Directive
-},{"./text-parser":39}],22:[function(require,module,exports){
+},{"./text-parser":40}],23:[function(require,module,exports){
 var utils = require('../utils'),
     slice = [].slice
 
@@ -8729,7 +8511,7 @@ module.exports = {
         parent.insertBefore(frag, this.el)
     }
 }
-},{"../utils":41}],23:[function(require,module,exports){
+},{"../utils":42}],24:[function(require,module,exports){
 var utils    = require('../utils')
 
 /**
@@ -8786,7 +8568,7 @@ module.exports = {
         }
     }
 }
-},{"../utils":41}],24:[function(require,module,exports){
+},{"../utils":42}],25:[function(require,module,exports){
 var utils      = require('../utils'),
     config     = require('../config'),
     transition = require('../transition'),
@@ -8916,7 +8698,7 @@ directives.html    = require('./html')
 directives.style   = require('./style')
 directives.partial = require('./partial')
 directives.view    = require('./view')
-},{"../config":19,"../transition":40,"../utils":41,"./html":22,"./if":23,"./model":25,"./on":26,"./partial":27,"./repeat":28,"./style":29,"./view":30,"./with":31}],25:[function(require,module,exports){
+},{"../config":20,"../transition":41,"../utils":42,"./html":23,"./if":24,"./model":26,"./on":27,"./partial":28,"./repeat":29,"./style":30,"./view":31,"./with":32}],26:[function(require,module,exports){
 var utils = require('../utils'),
     isIE9 = navigator.userAgent.indexOf('MSIE 9.0') > 0,
     filter = [].filter
@@ -9091,7 +8873,7 @@ module.exports = {
         }
     }
 }
-},{"../utils":41}],26:[function(require,module,exports){
+},{"../utils":42}],27:[function(require,module,exports){
 var utils    = require('../utils')
 
 /**
@@ -9150,7 +8932,7 @@ module.exports = {
         this.el.removeEventListener('load', this.iframeBind)
     }
 }
-},{"../utils":41}],27:[function(require,module,exports){
+},{"../utils":42}],28:[function(require,module,exports){
 var utils = require('../utils')
 
 /**
@@ -9201,7 +8983,7 @@ module.exports = {
     }
 
 }
-},{"../utils":41}],28:[function(require,module,exports){
+},{"../utils":42}],29:[function(require,module,exports){
 var utils      = require('../utils'),
     config     = require('../config')
 
@@ -9448,7 +9230,7 @@ function indexOf (vms, obj) {
     }
     return -1
 }
-},{"../config":19,"../utils":41}],29:[function(require,module,exports){
+},{"../config":20,"../utils":42}],30:[function(require,module,exports){
 var prefixes = ['-webkit-', '-moz-', '-ms-']
 
 /**
@@ -9495,7 +9277,7 @@ module.exports = {
     }
 
 }
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 /**
  *  Manages a conditional child VM using the
  *  binding's value as the component ID.
@@ -9552,7 +9334,7 @@ module.exports = {
     }
 
 }
-},{}],31:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 var utils = require('../utils')
 
 /**
@@ -9603,7 +9385,7 @@ module.exports = {
     }
 
 }
-},{"../utils":41}],32:[function(require,module,exports){
+},{"../utils":42}],33:[function(require,module,exports){
 var slice = [].slice
 
 function Emitter (ctx) {
@@ -9701,7 +9483,7 @@ EmitterProto.applyEmit = function (event) {
 }
 
 module.exports = Emitter
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 var utils           = require('./utils'),
     STR_SAVE_RE     = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g,
     STR_RESTORE_RE  = /"(\d+)"/g,
@@ -9892,7 +9674,7 @@ exports.eval = function (exp, compiler, data) {
     }
     return res
 }
-},{"./utils":41}],34:[function(require,module,exports){
+},{"./utils":42}],35:[function(require,module,exports){
 var utils    = require('./utils'),
     get      = utils.get,
     slice    = [].slice,
@@ -10084,7 +9866,7 @@ function stripQuotes (str) {
         return str.slice(1, -1)
     }
 }
-},{"./utils":41}],35:[function(require,module,exports){
+},{"./utils":42}],36:[function(require,module,exports){
 // string -> DOM conversion
 // wrappers originally from jQuery, scooped from component/domify
 var map = {
@@ -10152,7 +9934,7 @@ module.exports = function (templateString) {
     }
     return frag
 }
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 var config      = require('./config'),
     ViewModel   = require('./viewmodel'),
     utils       = require('./utils'),
@@ -10341,7 +10123,7 @@ function inheritOptions (child, parent, topLevel) {
 }
 
 module.exports = ViewModel
-},{"./config":19,"./directives":24,"./filters":34,"./observer":37,"./transition":40,"./utils":41,"./viewmodel":42}],37:[function(require,module,exports){
+},{"./config":20,"./directives":25,"./filters":35,"./observer":38,"./transition":41,"./utils":42,"./viewmodel":43}],38:[function(require,module,exports){
 /* jshint proto:true */
 
 var Emitter  = require('./emitter'),
@@ -10788,7 +10570,7 @@ var pub = module.exports = {
     convert     : convert,
     convertKey  : convertKey
 }
-},{"./emitter":32,"./utils":41}],38:[function(require,module,exports){
+},{"./emitter":33,"./utils":42}],39:[function(require,module,exports){
 var toFragment = require('./fragment');
 
 /**
@@ -10836,7 +10618,7 @@ module.exports = function(template) {
     return toFragment(templateNode.outerHTML);
 }
 
-},{"./fragment":35}],39:[function(require,module,exports){
+},{"./fragment":36}],40:[function(require,module,exports){
 var openChar        = '{',
     endChar         = '}',
     ESCAPE_RE       = /[-.*+?^${}()|[\]\/\\]/g,
@@ -10933,7 +10715,7 @@ exports.parse         = parse
 exports.parseAttr     = parseAttr
 exports.setDelimiters = setDelimiters
 exports.delimiters    = [openChar, endChar]
-},{"./directive":21}],40:[function(require,module,exports){
+},{"./directive":22}],41:[function(require,module,exports){
 var endEvents  = sniffEndEvents(),
     config     = require('./config'),
     // batch enter animations so we only force the layout once
@@ -11162,7 +10944,7 @@ function sniffEndEvents () {
 // Expose some stuff for testing purposes
 transition.codes = codes
 transition.sniff = sniffEndEvents
-},{"./batcher":16,"./config":19}],41:[function(require,module,exports){
+},{"./batcher":17,"./config":20}],42:[function(require,module,exports){
 var config       = require('./config'),
     toString     = ({}).toString,
     win          = window,
@@ -11489,7 +11271,7 @@ function enableDebug () {
         }
     }
 }
-},{"./config":19,"./fragment":35,"./template-parser.js":38,"./viewmodel":42}],42:[function(require,module,exports){
+},{"./config":20,"./fragment":36,"./template-parser.js":39,"./viewmodel":43}],43:[function(require,module,exports){
 var Compiler   = require('./compiler'),
     utils      = require('./utils'),
     transition = require('./transition'),
@@ -11681,4 +11463,4 @@ function query (el) {
 
 module.exports = ViewModel
 
-},{"./batcher":16,"./compiler":18,"./transition":40,"./utils":41}]},{},[1]);
+},{"./batcher":17,"./compiler":19,"./transition":41,"./utils":42}]},{},[1]);

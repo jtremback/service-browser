@@ -2,35 +2,24 @@
 
 var SockJS = require('sockjs-client');
 var sock = new SockJS(window.location.origin + '/websocket');
+var access = require('safe-access');
+var api;
 
-var EventEmitter = require('events').EventEmitter;
+module.exports = sock;
 
-sock.messages = new EventEmitter();
-
-sock.onopen = function() {
-  console.log('open');
+sock.init = function (arg) {
+  api = arg;
 };
 
 sock.onmessage = function(e) {
-  var data = JSON.parse(e.data);
-  console.log('RECIEVED MESSAGE: ', data);
-
-  if (data.type === 'service') {
-    if (data.action === 'up') {
-      sock.messages.emit('serviceUp', data.service);
-    } else if (data.action === 'down') {
-      sock.messages.emit('serviceDown', data.service);
-    }
-  }
-};
-
-sock.onclose = function() {
-  console.log('close');
+  var message = JSON.parse(e.data);
+  access(api, message[0], message[1]);
+  console.log('SOCKET MESSAGE: ', message);
 };
 
 sock.access = function (keypath, args) {
+  // If single argument, wrap in array
+  args = Array.isArray(args) ? args : [ args ];
   var message = JSON.stringify([ keypath, args ]);
   sock.send(message);
 };
-
-module.exports = sock;
